@@ -1,101 +1,145 @@
 import streamlit as st
 
-# 1. メニューデータベース（本物の画像リンクと価格を設定）
+# 1. メニューデータベース
 MENU = {
     "BR01": {
         "name": "Milano-fu Doria (ミラノ風ドリア)", 
         "price": 300,
-        "image": "https://unsplash.com" # ドリア風ピザ・グラタンイメージ
+        "image": "https://unsplash.com"
     },
     "AA01": {
         "name": "Popcorn Shrimp (ポップコーンシュリンプ)", 
         "price": 300,
-        "image": "https://unsplash.com" # エビフライ・シュリンプイメージ
+        "image": "https://unsplash.com"
     },
     "DG01": {
         "name": "Italian Gelato (イタリアンジェラート)", 
         "price": 250,
-        "image": "https://unsplash.com" # ジェラート・アイスイメージ
+        "image": "https://unsplash.com"
     },
 }
 
-st.title("🍕 Saizeriya Smart Order Slip")
+# --- 画面切り替えの仕組み（セッション状態） ---
+# 現在の画面が「order（注文中）」か「done（注文完了）」かを記憶させます
+if "page" not in st.session_state:
+    st.session_state.page = "order"
 
-# 注文データの記憶エリア（セッション状態）を初期化
 if "order_slip" not in st.session_state:
     st.session_state.order_slip = []
 
-# --- 新機能：【番号で検索して追加する場所】 ---
-st.subheader("🔍 Search & Add by Code")
-col_input, col_btn = st.columns([3, 1])
+# 前回の注文内容を完了画面で表示するために一時保存するエリア
+if "final_order" not in st.session_state:
+    st.session_state.final_order = []
+if "final_total" not in st.session_state:
+    st.session_state.final_total = 0
 
-with col_input:
-    # ユーザーが自由に4桁の番号を打ち込めるテキストボックス
-    search_code = st.text_input("Enter 4-Digit Menu Code (e.g., BR01):", key="search_box").upper()
 
-with col_btn:
-    st.write("##") # 位置調整用の空白
-    search_submitted = st.button("➕ Add Code", type="primary")
-
-# 検索ボタンが押された時の処理
-if search_submitted and search_code:
-    if search_code in MENU:
-        st.session_state.order_slip.append({
-            "code": search_code,
-            "name": MENU[search_code]["name"],
-            "price": MENU[search_code]["price"]
-        })
-        st.toast(f"Added {MENU[search_code]['name']}!")
+# ==========================================
+# 状態A: 【注文完了画面 (done)】
+# ==========================================
+if st.session_state.page == "done":
+    st.balloons() # 画面にお祝いの風船を飛ばす楽しい演出です！
+    st.title("🎉 Order Completed!")
+    st.success("ご注文が完了しました！厨房にデータが送信されました（風表示）。")
+    
+    st.subheader("📋 ご注文内容の確認")
+    for item in st.session_state.final_order:
+        st.write(f"- **[{item['code']}]** {item['name']} — ¥{item['price']}")
+    
+    st.markdown("---")
+    st.markdown(f"### 💰 **合計金額: ¥{st.session_state.final_total}**")
+    
+    st.write("またのご利用をお待ちしております！")
+    
+    # 最初の注文画面に戻るボタン
+    if st.button("トップに戻って新しく注文する", type="primary"):
+        st.session_state.order_slip = [] # 伝票を空にする
+        st.session_state.page = "order"   # 画面を注文中に戻す
         st.rerun()
-    else:
-        st.error("Item code not found. Please try again.")
 
-# --- 修正・改善：【写真付きメニューの一覧】 ---
-st.markdown("---")
-st.subheader("📖 Menu Catalog")
-st.write("Click 'Add' directly under the photo to order:")
-
-# メニューを横並びにするグリッド
-cols = st.columns(len(MENU))
-
-for index, (code, info) in enumerate(MENU.items()):
-    with cols[index]:
-        # Web上の本物の画像URLを表示（枠線にフィットさせる設定）
-        st.image(info["image"], use_container_width=True)
-        # メニュー名と価格
-        st.markdown(f"**[{code}]**\n{info['name']}\n### ¥{info['price']}")
-        
-        # 写真の下の追加ボタン
-        if st.button("➕ Add", key=f"catalog_add_{code}"):
-            st.session_state.order_slip.append({
-                "code": code,
-                "name": info["name"],
-                "price": info["price"]
-            })
-            st.toast(f"Added {info['name']}!")
-            st.rerun()
-
-# --- 注文伝票と合計金額の計算 ---
-st.markdown("---")
-st.subheader("📋 Your Digital Order Slip")
-
-if not st.session_state.order_slip:
-    st.info("Your order slip is empty.")
+# ==========================================
+# 状態B: 【いつもの注文画面 (order)】
+# ==========================================
 else:
-    total_price = 0
-    for idx, item in enumerate(st.session_state.order_slip):
-        item_col1, item_col2 = st.columns([5, 1])
-        with item_col1:
-            st.write(f"**[{item['code']}]** {item['name']} — ¥{item['price']}")
-            total_price += item['price']
-        with item_col2:
-            if st.button("❌", key=f"del_{idx}"):
-                st.session_state.order_slip.pop(idx)
+    st.title("🍕 Saizeriya Smart Order Slip")
+
+    # --- 1. 番号で検索して追加 ---
+    st.subheader("🔍 Search & Add by Code")
+    col_input, col_btn = st.columns()
+
+    with col_input:
+        search_code = st.text_input("Enter 4-Digit Menu Code (e.g., BR01):", key="search_box").upper()
+    with col_btn:
+        st.write("##") 
+        search_submitted = st.button("➕ Add Code", type="primary")
+
+    if search_submitted and search_code:
+        if search_code in MENU:
+            st.session_state.order_slip.append({
+                "code": search_code,
+                "name": MENU[search_code]["name"],
+                "price": MENU[search_code]["price"]
+            })
+            st.toast(f"Added {MENU[search_code]['name']}!")
+            st.rerun()
+        else:
+            st.error("Item code not found. Please try again.")
+
+    # --- 2. 写真付きメニューの一覧 ---
+    st.markdown("---")
+    st.subheader("📖 Menu Catalog")
+    
+    cols = st.columns(len(MENU))
+    for index, (code, info) in enumerate(MENU.items()):
+        with cols[index]:
+            st.image(info["image"], use_container_width=True)
+            st.markdown(f"**[{code}]**\n{info['name']}\n### ¥{info['price']}")
+            
+            if st.button("➕ Add", key=f"catalog_add_{code}"):
+                st.session_state.order_slip.append({
+                    "code": code,
+                    "name": info["name"],
+                    "price": info["price"]
+                })
+                st.toast(f"Added {info['name']}!")
+                st.rerun()
+
+    # --- 3. 注文伝票と合計金額 ---
+    st.markdown("---")
+    st.subheader("📋 Your Digital Order Slip")
+
+    if not st.session_state.order_slip:
+        st.info("Your order slip is empty.")
+    else:
+        total_price = 0
+        for idx, item in enumerate(st.session_state.order_slip):
+            item_col1, item_col2 = st.columns()
+            with item_col1:
+                st.write(f"**[{item['code']}]** {item['name']} — ¥{item['price']}")
+                total_price += item['price']
+            with item_col2:
+                if st.button("❌", key=f"del_{idx}"):
+                    st.session_state.order_slip.pop(idx)
+                    st.rerun()
+                    
+        st.markdown("---")
+        st.markdown(f"### 💰 **Total Price: ¥{total_price}**")
+        
+        # 横並びで「クリア」と「注文確定」ボタンを配置
+        col_clear, col_submit = st.columns(2)
+        
+        with col_clear:
+            if st.button("Clear Entire Order", use_container_width=True):
+                st.session_state.order_slip = []
                 st.rerun()
                 
-    st.markdown("---")
-    st.markdown(f"### 💰 **Total Price: ¥{total_price}**")
-    
-    if st.button("Clear Entire Order"):
-        st.session_state.order_slip = []
-        st.rerun()
+        with col_submit:
+            # 💡 これが新しい「注文を確定する」ボタンです！
+            if st.button("🚀 注文を確定する", type="primary", use_container_width=True):
+                # 現在の注文内容と合計金額を完了画面用にコピー
+                st.session_state.final_order = st.session_state.order_slip.copy()
+                st.session_state.final_total = total_price
+                
+                # 画面の状態を「done（完了）」に切り替える
+                st.session_state.page = "done"
+                st.rerun()
