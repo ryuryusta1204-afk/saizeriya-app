@@ -20,14 +20,12 @@ MENU = {
 }
 
 # --- 画面切り替えの仕組み（セッション状態） ---
-# 現在の画面が「order（注文中）」か「done（注文完了）」かを記憶させます
 if "page" not in st.session_state:
     st.session_state.page = "order"
 
 if "order_slip" not in st.session_state:
     st.session_state.order_slip = []
 
-# 前回の注文内容を完了画面で表示するために一時保存するエリア
 if "final_order" not in st.session_state:
     st.session_state.final_order = []
 if "final_total" not in st.session_state:
@@ -38,7 +36,7 @@ if "final_total" not in st.session_state:
 # 状態A: 【注文完了画面 (done)】
 # ==========================================
 if st.session_state.page == "done":
-    st.balloons() # 画面にお祝いの風船を飛ばす楽しい演出です！
+    st.balloons() # 画面にお祝いの風船を飛ばす演出
     st.title("🎉 Order Completed!")
     st.success("ご注文が完了しました！厨房にデータが送信されました（風表示）。")
     
@@ -53,8 +51,8 @@ if st.session_state.page == "done":
     
     # 最初の注文画面に戻るボタン
     if st.button("トップに戻って新しく注文する", type="primary"):
-        st.session_state.order_slip = [] # 伝票を空にする
-        st.session_state.page = "order"   # 画面を注文中に戻す
+        st.session_state.order_slip = [] 
+        st.session_state.page = "order"   
         st.rerun()
 
 # ==========================================
@@ -65,7 +63,7 @@ else:
 
     # --- 1. 番号で検索して追加 ---
     st.subheader("🔍 Search & Add by Code")
-    col_input, col_btn = st.columns()
+    col_input, col_btn = st.columns(2)
 
     with col_input:
         search_code = st.text_input("Enter 4-Digit Menu Code (e.g., BR01):", key="search_box").upper()
@@ -92,7 +90,8 @@ else:
     cols = st.columns(len(MENU))
     for index, (code, info) in enumerate(MENU.items()):
         with cols[index]:
-            st.image(info["image"], use_container_width=True)
+            # 💡 エラー原因になりやすい設定を、最も安全な昔ながらの書き方（use_column_width=True）に変更しました
+            st.image(info["image"], use_column_width=True)
             st.markdown(f"**[{code}]**\n{info['name']}\n### ¥{info['price']}")
             
             if st.button("➕ Add", key=f"catalog_add_{code}"):
@@ -113,7 +112,7 @@ else:
     else:
         total_price = 0
         for idx, item in enumerate(st.session_state.order_slip):
-            item_col1, item_col2 = st.columns()
+            item_col1, item_col2 = st.columns(2)
             with item_col1:
                 st.write(f"**[{item['code']}]** {item['name']} — ¥{item['price']}")
                 total_price += item['price']
@@ -125,7 +124,6 @@ else:
         st.markdown("---")
         st.markdown(f"### 💰 **Total Price: ¥{total_price}**")
         
-        # 横並びで「クリア」と「注文確定」ボタンを配置
         col_clear, col_submit = st.columns(2)
         
         with col_clear:
@@ -134,12 +132,8 @@ else:
                 st.rerun()
                 
         with col_submit:
-            # 💡 これが新しい「注文を確定する」ボタンです！
             if st.button("🚀 注文を確定する", type="primary", use_container_width=True):
-                # 現在の注文内容と合計金額を完了画面用にコピー
                 st.session_state.final_order = st.session_state.order_slip.copy()
                 st.session_state.final_total = total_price
-                
-                # 画面の状態を「done（完了）」に切り替える
                 st.session_state.page = "done"
                 st.rerun()
