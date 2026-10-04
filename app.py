@@ -59,7 +59,7 @@ if st.session_state.page == "done":
 # 状態B: 【いつもの注文画面 (order)】
 # ==========================================
 else:
-    st.title("🍕 Saizeriya Smart Order Slip")
+    st.title("🍕 サイゼリヤのオーダー表")
 
     # --- 1. 番号で検索して追加 ---
     st.subheader("🔍 Search & Add by Code")
